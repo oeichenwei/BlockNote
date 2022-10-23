@@ -43,7 +43,7 @@ NESTED BLOCKS
 .blockGroup .blockGroup > .blockOuter:not([data-prev-depthchanged])::before {
   content: " ";
   display: inline;
-  border-left: 1px solid #ccc;
+  /*border-left: 1px solid #ccc;*/
   position: absolute;
   left: -20px;
   height: 100%;

@@ -120,7 +120,7 @@ export const createDraggableBlocksPlugin = () => {
 
   // When true, the drag handle with be anchored at the same level as root elements
   // When false, the drag handle with be just to the left of the element
-  const horizontalPosAnchoredAtRoot = true;
+  const horizontalPosAnchoredAtRoot = false;
 
   let menuShown = false;
   let addClicked = false;

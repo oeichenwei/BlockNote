@@ -150,6 +150,14 @@ export const Block = Node.create<IBlock>({
           listType: "oli",
         },
       }),
+      // Create checkbox when starting with "[] "
+      textblockTypeInputRuleSameNodeType({
+        find: new RegExp(/^\[\] \s/),
+        type: this.type,
+        getAttributes: {
+          listType: "check",
+        },
+      }),
     ];
   },
 
