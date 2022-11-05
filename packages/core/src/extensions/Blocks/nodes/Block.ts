@@ -108,6 +108,23 @@ export const Block = Node.create<IBlock>({
   },
 
   renderHTML({ HTMLAttributes }) {
+    console.log("-->", HTMLAttributes);
+    if (HTMLAttributes["data-listType"] === "check") {
+      return [
+        "div",
+        mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+          class: styles.blockOuter,
+        }),
+        ["input", { type: "checkbox", class: styles.blockCheck }],
+        [
+          "div",
+          mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+            class: styles.block,
+          }),
+          0,
+        ],
+      ];
+    }
     return [
       "div",
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
@@ -152,7 +169,7 @@ export const Block = Node.create<IBlock>({
       }),
       // Create checkbox when starting with "[] "
       textblockTypeInputRuleSameNodeType({
-        find: new RegExp(/^\[\] \s/),
+        find: new RegExp(/^\s*(\[\])\s$/),
         type: this.type,
         getAttributes: {
           listType: "check",
