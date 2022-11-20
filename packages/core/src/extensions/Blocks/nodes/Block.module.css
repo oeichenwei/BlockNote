@@ -130,8 +130,9 @@ NESTED BLOCKS
 }
 
 .blockCheck {
-  float: left;
-  margin-top: 9px;
+  display: inline;
+  margin-right: 0.8em;
+  vertical-align: middle;
 }
 .blockOuter[data-prev-listtype="check"] > .block > div:first-child::before,
 .blockOuter[data-listtype="check"]:not([data-prev-listtype])

@@ -5,7 +5,10 @@ import { findBlock } from "../helpers/findBlock";
 import { setBlockHeading } from "../helpers/setBlockHeading";
 import { OrderedListPlugin } from "../OrderedListPlugin";
 import { PreviousBlockTypePlugin } from "../PreviousBlockTypePlugin";
-import { textblockTypeInputRuleSameNodeType } from "../rule";
+import {
+  textblockTypeInputRuleSameNodeType,
+  textblockTypeInputRuleChildNodeType,
+} from "../rule";
 import styles from "./Block.module.css";
 
 export interface IBlock {
@@ -108,23 +111,6 @@ export const Block = Node.create<IBlock>({
   },
 
   renderHTML({ HTMLAttributes }) {
-    console.log("-->", HTMLAttributes);
-    if (HTMLAttributes["data-listType"] === "check") {
-      return [
-        "div",
-        mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
-          class: styles.blockOuter,
-        }),
-        ["input", { type: "checkbox", class: styles.blockCheck }],
-        [
-          "div",
-          mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
-            class: styles.block,
-          }),
-          0,
-        ],
-      ];
-    }
     return [
       "div",
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
@@ -168,7 +154,7 @@ export const Block = Node.create<IBlock>({
         },
       }),
       // Create checkbox when starting with "[] "
-      textblockTypeInputRuleSameNodeType({
+      textblockTypeInputRuleChildNodeType({
         find: new RegExp(/^\s*(\[\])\s$/),
         type: this.type,
         getAttributes: {
