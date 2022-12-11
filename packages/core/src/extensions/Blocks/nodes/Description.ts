@@ -43,7 +43,7 @@ export const DescBlock = Node.create<IBlock>({
     return [
       "div",
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
-        class: styles.blockContent,
+        class: styles.blockDesc,
       }),
       ["div", 0],
     ];

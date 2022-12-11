@@ -2,10 +2,10 @@ import { Node } from "@tiptap/core";
 import { Block } from "./nodes/Block";
 import { BlockGroup } from "./nodes/BlockGroup";
 import { ContentBlock } from "./nodes/Content";
-//import { DescBlock } from "./nodes/Description";
+import { DescBlock } from "./nodes/Description";
 
 export const blocks: any[] = [
-  //DescBlock,
+  DescBlock,
   ContentBlock,
   Block,
   BlockGroup,

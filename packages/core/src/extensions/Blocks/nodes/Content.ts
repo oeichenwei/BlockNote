@@ -46,7 +46,6 @@ export const ContentBlock = Node.create<IBlock>({
   },
 
   renderHTML({ node, HTMLAttributes }) {
-    console.log("-->", node);
     if (HTMLAttributes["data-listType"] === "check") {
       return [
         "div",

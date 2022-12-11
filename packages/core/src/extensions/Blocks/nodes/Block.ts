@@ -1,8 +1,10 @@
-import { mergeAttributes, Node } from "@tiptap/core";
+import { getNodeType, mergeAttributes, Node } from "@tiptap/core";
+import { Fragment, Slice } from "prosemirror-model";
 import { Selection, TextSelection } from "prosemirror-state";
 import { joinBackward } from "../commands/joinBackward";
 import { findBlock } from "../helpers/findBlock";
 import { setBlockHeading } from "../helpers/setBlockHeading";
+import { getSplittedAttributes } from "../helpers/getSplittedAttributes";
 import { OrderedListPlugin } from "../OrderedListPlugin";
 import { PreviousBlockTypePlugin } from "../PreviousBlockTypePlugin";
 import {
@@ -10,6 +12,7 @@ import {
   textblockTypeInputRuleChildNodeType,
 } from "../rule";
 import styles from "./Block.module.css";
+import { canSplit } from "prosemirror-transform";
 
 export interface IBlock {
   HTMLAttributes: Record<string, any>;
@@ -55,7 +58,7 @@ export const Block = Node.create<IBlock>({
   },
 
   // A block always contains content, and optionally a blockGroup which contains nested blocks
-  content: "content blockgroup?",
+  content: "content description* blockgroup?",
 
   defining: true,
 
@@ -344,18 +347,171 @@ export const Block = Node.create<IBlock>({
         () => commands.selectNodeBackward(), // (source: tiptap)
       ]);
 
+    const handleSoftEnter = () =>
+      this.editor.commands.first(() => [
+        ({ tr, state, dispatch, editor }) => {
+          const type = getNodeType("block", state.schema);
+          const { $from, $to } = state.selection;
+          // @ts-ignore
+          // eslint-disable-next-line
+          const node: ProseMirrorNode = state.selection.node;
+
+          if (
+            (node && node.isBlock) ||
+            $from.depth < 2 ||
+            !$from.sameParent($to)
+          ) {
+            return false;
+          }
+
+          const grandParent = $from.node(-1);
+
+          if (grandParent.type !== type) {
+            return false;
+          }
+
+          const extensionAttributes = editor.extensionManager.attributes;
+          if (
+            $from.parent.content.size === 0 &&
+            $from.node(-1).childCount === $from.indexAfter(-1)
+          ) {
+            // In an empty block. If this is a nested list, the wrapping
+            // list item should be split. Otherwise, bail out and let next
+            // command handle lifting.
+            if (
+              $from.depth === 2 ||
+              $from.node(-3).type !== type ||
+              $from.index(-2) !== $from.node(-2).childCount - 1
+            ) {
+              return false;
+            }
+
+            if (dispatch) {
+              let wrap = Fragment.empty;
+              // eslint-disable-next-line
+              const depthBefore = $from.index(-1) ? 1 : $from.index(-2) ? 2 : 3;
+
+              // Build a fragment containing empty versions of the structure
+              // from the outer list item to the parent node of the cursor
+              for (
+                let d = $from.depth - depthBefore;
+                d >= $from.depth - 3;
+                d -= 1
+              ) {
+                wrap = Fragment.from($from.node(d).copy(wrap));
+              }
+
+              // eslint-disable-next-line
+              const depthAfter =
+                $from.indexAfter(-1) < $from.node(-2).childCount
+                  ? 1
+                  : $from.indexAfter(-2) < $from.node(-3).childCount
+                  ? 2
+                  : 3;
+
+              // Add a second list item with an empty default start node
+              const newNextTypeAttributes = getSplittedAttributes(
+                extensionAttributes,
+                $from.node().type.name,
+                $from.node().attrs
+              );
+              const nextType =
+                type.contentMatch.defaultType?.createAndFill(
+                  newNextTypeAttributes
+                ) || undefined;
+
+              wrap = wrap.append(
+                Fragment.from(type.createAndFill(null, nextType) || undefined)
+              );
+
+              const start = $from.before($from.depth - (depthBefore - 1));
+
+              tr.replace(
+                start,
+                $from.after(-depthAfter),
+                new Slice(wrap, 4 - depthBefore, 0)
+              );
+
+              let sel = -1;
+
+              tr.doc.nodesBetween(start, tr.doc.content.size, (n, pos) => {
+                if (sel > -1) {
+                  return false;
+                }
+
+                if (n.isTextblock && n.content.size === 0) {
+                  sel = pos + 1;
+                }
+                return true;
+              });
+
+              if (sel > -1) {
+                tr.setSelection(TextSelection.near(tr.doc.resolve(sel)));
+              }
+
+              tr.scrollIntoView();
+            }
+
+            return true;
+          }
+
+          const nextType = getNodeType("description", state.schema);
+
+          const newNextTypeAttributes = getSplittedAttributes(
+            extensionAttributes,
+            $from.node().type.name,
+            $from.node().attrs
+          );
+
+          tr.delete($from.pos, $to.pos);
+
+          const types = [
+            { type: nextType, attrs: newNextTypeAttributes },
+            { type: nextType, attrs: newNextTypeAttributes },
+          ];
+
+          if (!canSplit(tr.doc, $from.pos, 2)) {
+            return false;
+          }
+
+          if (dispatch) {
+            tr.split($from.pos, 1, types).scrollIntoView();
+          }
+
+          return true;
+        },
+      ]);
+
     const handleEnter = () =>
       this.editor.commands.first(({ commands }) => [
         // Try to split the current block into 2 items:
         () => commands.splitListItem("block"),
         // Otherwise, maybe we are in an empty list item. "Enter" should remove the list bullet
-        ({ tr, dispatch }) => {
+        ({ tr, state, dispatch, editor }) => {
           const $from = tr.selection.$from;
+          const extensionAttributes = editor.extensionManager.attributes;
+          const node = tr.selection.$anchor.node(-1);
+          if (node.childCount === 2) {
+            const nextType = getNodeType("content", state.schema);
+            const newNextTypeAttributes = getSplittedAttributes(
+              extensionAttributes,
+              $from.node().type.name,
+              $from.node().attrs
+            );
+            const types = [
+              { type: node.type, attrs: node.attrs },
+              { type: nextType, attrs: newNextTypeAttributes },
+            ];
+            if (dispatch) {
+              tr.split($from.pos, 2, types).scrollIntoView();
+            }
+            return true;
+          }
+
           if ($from.depth !== 3) {
             // only needed at root level, at deeper levels it should be handled already by splitListItem
             return false;
           }
-          const node = tr.selection.$anchor.node(-1);
           const nodePos = tr.selection.$anchor.posAtIndex(0, -1) - 1;
 
           if (node.type.name === "block" && node.attrs["listType"]) {
@@ -384,6 +540,7 @@ export const Block = Node.create<IBlock>({
       Backspace: handleBackspace,
       Enter: handleEnter,
       Tab: () => this.editor.commands.sinkListItem("block"),
+      "Shift-Enter": handleSoftEnter,
       "Shift-Tab": () => {
         return this.editor.commands.liftListItem("block");
       },
