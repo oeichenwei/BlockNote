@@ -98,6 +98,16 @@ export const Block = Node.create<IBlock>({
         },
         parseHTML: (element) => element.getAttribute("data-headingType"),
       },
+      dataValue: {
+        default: false,
+        keepOnSplit: false,
+        renderHTML: (attributes) => {
+          return {
+            "data-value": attributes.dataValue,
+          };
+        },
+        parseHTML: (element) => element.getAttribute("data-value"),
+      },
     };
   },
 
@@ -115,7 +125,8 @@ export const Block = Node.create<IBlock>({
   },
 
   addNodeView() {
-    return ({ HTMLAttributes }) => {
+    return ({ HTMLAttributes, getPos, editor }) => {
+      //console.log("-->", HTMLAttributes);
       const blockItem = document.createElement("div");
       const outerAttrib = mergeAttributes(
         this.options.HTMLAttributes,
@@ -148,7 +159,59 @@ export const Block = Node.create<IBlock>({
         const checkbox = document.createElement("input");
         checkbox.contentEditable = "false";
         checkbox.type = "checkbox";
+        if (HTMLAttributes["data-value"] === true) {
+          checkbox.checked = HTMLAttributes["data-value"];
+        }
         checkbox.setAttribute("class", styles.blockCheck);
+        checkbox.addEventListener("change", (event) => {
+          // if the editor isn’t editable and we don't have a handler for
+          // readonly checks we have to undo the latest change
+          if (!editor.isEditable) {
+            checkbox.checked = !checkbox.checked;
+
+            return;
+          }
+
+          const { checked } = event.target as any;
+
+          if (editor.isEditable && typeof getPos === "function") {
+            editor
+              .chain()
+              .focus(undefined, { scrollIntoView: false })
+              .command(({ tr }) => {
+                const position = getPos();
+                const currentNode = tr.doc.nodeAt(position);
+                const data_val = {
+                  dataValue: checked,
+                };
+
+                tr.setNodeMarkup(position, undefined, {
+                  ...currentNode?.attrs,
+                  ...data_val,
+                });
+                if (currentNode) {
+                  let firstChildSize = 0;
+                  if (currentNode.firstChild) {
+                    firstChildSize = currentNode.firstChild?.nodeSize;
+                  }
+                  //console.log("-->", firstChildSize);
+                  const mark = editor.schema.mark("strike");
+                  const italic = editor.schema.mark("italic");
+                  const endPos = position + firstChildSize;
+                  if (checked) {
+                    tr.addMark(position + 2, endPos, mark);
+                    tr.addMark(position + 2, endPos, italic);
+                  } else {
+                    tr.removeMark(position + 2, endPos, mark);
+                    tr.removeMark(position + 2, endPos, italic);
+                  }
+                }
+
+                return true;
+              })
+              .run();
+          }
+        });
 
         blockItem.appendChild(checkbox);
       }
