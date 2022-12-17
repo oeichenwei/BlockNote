@@ -7,10 +7,7 @@ import { setBlockHeading } from "../helpers/setBlockHeading";
 import { getSplittedAttributes } from "../helpers/getSplittedAttributes";
 import { OrderedListPlugin } from "../OrderedListPlugin";
 import { PreviousBlockTypePlugin } from "../PreviousBlockTypePlugin";
-import {
-  textblockTypeInputRuleSameNodeType,
-  textblockTypeInputRuleChildNodeType,
-} from "../rule";
+import { textblockTypeInputRuleSameNodeType } from "../rule";
 import styles from "./Block.module.css";
 import { canSplit } from "prosemirror-transform";
 
@@ -19,7 +16,7 @@ export interface IBlock {
 }
 
 export type Level = 1 | 2 | 3;
-export type ListType = "li" | "oli";
+export type ListType = "li" | "oli" | "check";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -113,20 +110,54 @@ export const Block = Node.create<IBlock>({
     ];
   },
 
-  renderHTML({ HTMLAttributes }) {
-    return [
-      "div",
-      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
-        class: styles.blockOuter,
-      }),
-      [
-        "div",
-        mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+  renderHTML() {
+    return ["div"];
+  },
+
+  addNodeView() {
+    return ({ HTMLAttributes }) => {
+      const blockItem = document.createElement("div");
+      const outerAttrib = mergeAttributes(
+        this.options.HTMLAttributes,
+        HTMLAttributes,
+        {
+          class: styles.blockOuter,
+        }
+      );
+      Object.entries(outerAttrib).forEach(([key, value]) => {
+        if (value) {
+          blockItem.setAttribute(key, value);
+        }
+      });
+
+      const content = document.createElement("div");
+      const innerAttrib = mergeAttributes(
+        this.options.HTMLAttributes,
+        HTMLAttributes,
+        {
           class: styles.block,
-        }),
-        0,
-      ],
-    ];
+        }
+      );
+      Object.entries(innerAttrib).forEach(([key, value]) => {
+        if (value) {
+          content.setAttribute(key, value);
+        }
+      });
+
+      if (HTMLAttributes["data-listType"] === "check") {
+        const checkbox = document.createElement("input");
+        checkbox.contentEditable = "false";
+        checkbox.type = "checkbox";
+        checkbox.setAttribute("class", styles.blockCheck);
+
+        blockItem.appendChild(checkbox);
+      }
+      blockItem.appendChild(content);
+      return {
+        dom: blockItem,
+        contentDOM: content,
+      };
+    };
   },
 
   addInputRules() {
@@ -157,7 +188,7 @@ export const Block = Node.create<IBlock>({
         },
       }),
       // Create checkbox when starting with "[] "
-      textblockTypeInputRuleChildNodeType({
+      textblockTypeInputRuleSameNodeType({
         find: new RegExp(/^\s*(\[\])\s$/),
         type: this.type,
         getAttributes: {
@@ -232,6 +263,15 @@ export const Block = Node.create<IBlock>({
 
           // const node2 = tr.doc.nodeAt(nodePos);
           if (node.type.name === "block") {
+            let childNode = node.firstChild;
+            if (type !== "oli" && childNode) {
+              let newAttrs = { ...childNode.attrs };
+              delete newAttrs["position"];
+              tr.setNodeMarkup(nodePos + 1, undefined, {
+                ...newAttrs,
+              });
+            }
+
             if (dispatch) {
               tr.setNodeMarkup(nodePos, undefined, {
                 ...node.attrs,
@@ -491,7 +531,7 @@ export const Block = Node.create<IBlock>({
           const $from = tr.selection.$from;
           const extensionAttributes = editor.extensionManager.attributes;
           const node = tr.selection.$anchor.node(-1);
-          if (node.childCount === 2) {
+          if (node.childCount >= 2) {
             const nextType = getNodeType("content", state.schema);
             const newNextTypeAttributes = getSplittedAttributes(
               extensionAttributes,
@@ -551,6 +591,7 @@ export const Block = Node.create<IBlock>({
       "Mod-Alt-3": () => this.editor.commands.setBlockHeading({ level: 3 }),
       "Mod-Shift-7": () => this.editor.commands.setBlockList("li"),
       "Mod-Shift-8": () => this.editor.commands.setBlockList("oli"),
+      "Mod-Shift-9": () => this.editor.commands.setBlockList("check"),
       // TODO: Add shortcuts for numbered and bullet list
     };
   },

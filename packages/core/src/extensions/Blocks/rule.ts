@@ -36,6 +36,14 @@ export function textblockTypeInputRuleSameNodeType(config: {
         return null;
       }
 
+      let childNode = blockNode.firstChild;
+      if (attributes["listType"] !== "oli" && childNode) {
+        let newAttrs = { ...childNode.attrs };
+        delete newAttrs["position"];
+        state.tr.setNodeMarkup(range.from - 1, undefined, {
+          ...newAttrs,
+        });
+      }
       state.tr
         .setNodeMarkup(range.from - 2, undefined, {
           ...blockNode.attrs,

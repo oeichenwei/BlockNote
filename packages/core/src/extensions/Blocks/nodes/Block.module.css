@@ -130,8 +130,8 @@ NESTED BLOCKS
 }
 
 .blockCheck {
-  display: inline;
-  margin-right: 0.8em;
+  float: left;
+  margin-top: 0.6em;
   vertical-align: middle;
 }
 .blockOuter[data-prev-listtype="check"] > .block > div:first-child::before,
@@ -148,8 +148,9 @@ NESTED BLOCKS
   > .block
   > div:first-child::before {
   content: attr(data-position);
-  margin-right: 1.2em;
   padding-left: 0px;
+  width: 2em;
+  display: inline-block;
 }
 
 .blockOuter[data-prev-listtype="li"] > .block > div:first-child::before,
@@ -157,7 +158,8 @@ NESTED BLOCKS
   > .block
   > div:first-child::before {
   content: "•";
-  margin-right: 1.2em;
+  width: 2em;
+  display: inline-block;
   /* display: list-item; */
   /* list-style-type: circle; */
   /* list-style-position: inside; */
@@ -204,8 +206,11 @@ NESTED BLOCKS
 }
 
 /* PLACEHOLDERS*/
-.blockDesc {
-  color: #7f8488;
+blockquote {
+  margin: 0.2em 0.2em;
+  padding: 0em 0.5em;
+  border-left: 3px solid #eee;
+  background-color: #f9f9f9;
   font-size: small;
 }
 
@@ -229,6 +234,10 @@ NESTED BLOCKS
 
 .blockContent.isEmpty.hasAnchor div::before {
   content: "Enter text or type '/' for commands";
+}
+
+.blockContent > div::first-letter {
+  text-transform: capitalize;
 }
 
 .blockContent.isFilter.hasAnchor div::before {
