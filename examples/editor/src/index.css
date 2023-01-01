@@ -3,3 +3,20 @@ body,
 #root {
   height: 100%;
 }
+#title {
+  margin: 0 calc((100% - 731px) / 2);
+  padding-left: 0.8em;
+  line-height: 30px;
+  border-bottom: solid 2px #ccc;
+}
+#tools {
+  float: right;
+}
+.tool-button:hover {
+  background-color: #eee;
+}
+.tool-button {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 3px;
+}
